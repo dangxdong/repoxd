@@ -1,0 +1,167 @@
+## This is a simulation to see the effect of time span variance on an repeated event. 
+
+## The scenario is as follows:
+
+## A light is on road side, with two possible colors: red or green. No harm to set the original color green.
+## Whenever somebody passes by the light, it will turn into the other color.
+## On average one person passes in every minute. 
+
+## Ideally if one person exactly passes by in every minute, we know that from the 0th to n-th minute, 
+## the light color during the whole period will be (green, red, green, red, ....) alternatively.
+## And we definitely know that, for example, at the 11th minute, the light must be red.
+
+## However the people numbers passing by is naturally a poisson distribution,
+## or in other words, the actual time span between every two consecutive passers 
+## complies with negative exponential distribution.
+
+## Then what do we expect the light color at a given n-th minute? 
+
+## This short program is thus designed to simulate the above scenario and to demonstrate how the 
+## light status (red or green) changes from the 0th to 100th minute, in a more realistic situation.
+
+## In this simulation, a or aa is set for time span between two consecutive passers by (in minute);
+## x or xx is set for the time when each walker passes by (in minute);
+## y or yy is the calculated status or color (0 for green, 1 for red) from 0th to n-th minute.
+
+## Clear memory
+rm(list=ls())
+
+## Generate 100 random numbers complying with negative exponential distribution (mean=1, sd=1). 
+a=rexp(100,1)
+
+##(Random numbers of other distribution can also be tried in this simulation.)
+
+## Generate array x so that x1=0+a1, x2=x1+a2, x[n]=x[n-1]+a[n]
+
+x=rep(0,100)
+x[1]=a[1]
+for (i in 2:100){x[i]=x[i-1]+a[i]}
+
+## Generate array y, with y[i] = 0 or 1, depending on if there is an even or odd number of x during the 
+## time period between i-1 and i.
+
+y=rep(0,100)
+for (i in 1:100) {y[ceiling(x[i])]=1-y[ceiling(x[i])]}
+y=y[1:100]
+
+## Create a data frame to include a, x and y.
+mat1 = data.frame(a,x,y)
+
+## so the simulated values can be easily used for demonstration.
+
+
+## Now we want to do a hundred simulations at once.
+
+rm(list=ls())
+
+## In order to ensure that 100 data points of yy are obtained in the end, 
+## the length of aa and xx should be biger than 100.
+## Here 150 is used based on some experiment.
+
+aa = matrix(rexp(15000,1),100,150)
+
+## Generate xx based on aa. Note that here all values >100 are set to 101, 
+## so that the yy below will be easily truncated to a length of 100.
+xx = matrix(0,100,150)
+for (j in 1:nrow(xx)) {xx[j,1]=aa[j,1]; for (i in 2:ncol(xx)){xx[j,i]=if((xx[j,i-1]+aa[j,i])<=100){xx[j,i-1]+aa[j,i]} else {101}}}
+
+
+## Obtain yy
+yy = matrix(0,100,100)
+for (j in 1:nrow(yy)) 
+{
+i=1;
+while (xx[j,i]<=(ncol(yy)-1)) 
+	{
+	yy[j,ceiling(xx[j,i])]=1-yy[j,ceiling(xx[j,i])]; 
+	for (n in (ceiling(xx[j,i])):(ncol(yy)-1))
+		{
+		yy[j,n+1]=yy[j,n]
+		}
+	i=i+1
+	}
+while (xx[j,i]<=ncol(yy)) 
+	{
+	yy[j,ceiling(xx[j,i])]=1-yy[j,ceiling(xx[j,i])]; 
+	i=i+1
+	}
+}
+
+##To view the light status from 1th minute to 100th minute, just type 
+yy
+
+## If we want to check the possibility (simulated frequency) of red/green for every minute, just type
+colMeans(yy)
+
+
+## Finally, all the above is coded into a function, which takes aa as input, and returns
+## a few things we want. It also checks for some typical errors, 
+## e.g. aa is too short or aa contains negative values, and throws corresponding warnings.
+
+
+## Later we can just create some aa arrays and use "signalbin(aa)" to see what happens.
+## the returned value will be a list of one array and two numbers:
+## ResponseArray100 as the simulated frequency of red/green for every minute (1th to 100th),
+## OddMean as the average for the 1st, 3rd, 5th, ... 99th minutes,
+## EvenMean as the average for the 2nd, 4th, 6th, ... 100th minutes.
+
+## to test normal distribution of arriving time span, use e.g.  aa = matrix(rnorm(15000,1,0.2),100,150)
+## to test even distribution of arriving time span, use e.g. aa = matrix(runif(15000, 0.8, 1.2),100,150)
+
+## Using the output from this function, interested people can further explore if there is anything 
+## predictable in such a model.
+
+## Here begins the function
+signalbin <- function(aa)
+{
+if (all(aa>=0))
+{
+nrow1 = nrow(aa)
+ncol1 = ncol(aa)
+xx = matrix(0,nrow1,ncol1)
+for (j in 1:nrow1) {xx[j,1]=aa[j,1]; for (i in 2:ncol1){xx[j,i]=if((xx[j,i-1]+aa[j,i])<=100){xx[j,i-1]+aa[j,i]} else {101}}}
+rm(i)
+rm(j)
+if (all(xx[,ncol1]==101))
+{
+yy = matrix(0,nrow1,100)
+for (j in 1:nrow1) 
+{
+i=1;
+while (xx[j,i]<=99) 
+{
+yy[j,ceiling(xx[j,i])]=1-yy[j,ceiling(xx[j,i])]; 
+for (n in (ceiling(xx[j,i])):99)
+{
+yy[j,n+1]=yy[j,n]
+}
+i=i+1
+}
+while (xx[j,i]<=100) 
+{
+yy[j,ceiling(xx[j,i])]=1-yy[j,ceiling(xx[j,i])]; 
+i=i+1
+}
+}
+yymean=colMeans(yy)
+rm(i)
+rm(j)
+yymeanodd=yymean[seq(1,99,2)]
+yymeaneven=yymean[seq(2,100,2)]
+oddmean=mean(yymeanodd)
+evenmean=mean(yymeaneven)
+resultlist=list(ResponseArray100=yymean, OddMean=oddmean, EvenMean=evenmean)
+return(resultlist)
+}
+else
+{
+cat("Warning:", "\n", "Please try another input matrix.", "\n", "A column number >130 is recommended.", "\n")
+}
+rm(nrow1)
+rm(ncol1)
+}
+else
+{
+cat("Warning:", "\n", "Negative values exist and are not suitable for this simulation.", "\n", "Please try another input matrix.", "\n")
+}
+}
