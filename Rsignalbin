@@ -1,4 +1,4 @@
-## This is a simulation to see the effect of time span variance on an repeated event. 
+## This is a simulation to see the effect of time span variance on a repeated event. 
 
 ## The scenario is as follows:
 
@@ -20,7 +20,7 @@
 ## light status (red or green) changes from the 0th to 100th minute, in a more realistic situation.
 
 ## In this simulation, a or aa is set for time span between two consecutive passers by (in minute);
-## x or xx is set for the time when each walker passes by (in minute);
+## x or xx is set for the time since zero when each walker passes by (in minute);
 ## y or yy is the calculated status or color (0 for green, 1 for red) from 0th to n-th minute.
 
 ## Clear memory
